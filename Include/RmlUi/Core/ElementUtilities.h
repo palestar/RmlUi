@@ -46,9 +46,9 @@ public:
 	/// @param[in] class_name Class name to search for.
 	static void GetElementsByClassName(ElementList& elements, Element* root_element, const String& class_name);
 
-	/// Returns an element's density-independent pixel ratio, defined by its context.
+	/// Returns an element's density-independent pixel ratio: its context's, times the dp scale of the element and its ancestors.
 	/// @param[in] element The element to determine the density-independent pixel ratio for.
-	/// @return The density-independent pixel ratio of the context, or 1.0 if no context assigned.
+	/// @return The scaled density-independent pixel ratio of the context, or of 1.0 if no context assigned.
 	static float GetDensityIndependentPixelRatio(Element* element);
 	/// Returns the width of a string rendered within the context of the given element.
 	/// @param[in] element The element to measure the string from.

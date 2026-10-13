@@ -94,13 +94,17 @@ void ElementUtilities::GetElementsByClassName(ElementList& elements, Element* ro
 	}
 }
 
+// Multiplies from the root down, in the same order as Element::Update, so both give the same ratio.
+static float ApplyDpScales(Element* element, float context_dp_ratio)
+{
+	Element* parent = element->GetParentNode();
+	return (parent ? ApplyDpScales(parent, context_dp_ratio) : context_dp_ratio) * element->GetDpScale();
+}
+
 float ElementUtilities::GetDensityIndependentPixelRatio(Element* element)
 {
 	Context* context = element->GetContext();
-	if (context == nullptr)
-		return 1.0f;
-
-	return context->GetDensityIndependentPixelRatio();
+	return ApplyDpScales(element, context ? context->GetDensityIndependentPixelRatio() : 1.0f);
 }
 
 int ElementUtilities::GetStringWidth(Element* element, StringView string, Character prior_character)

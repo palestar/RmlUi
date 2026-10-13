@@ -125,6 +125,8 @@ void Element::Update(float dp_ratio, Vector2f vp_dimensions)
 	RMLUI_ZoneText(name.c_str(), name.size());
 #endif
 
+	dp_ratio *= dp_scale;
+
 	OnUpdate();
 
 	HandleTransitionProperty();
@@ -901,6 +903,24 @@ Context* Element::GetContext() const
 		return document->GetContext();
 
 	return nullptr;
+}
+
+void Element::SetDpScale(float scale)
+{
+	if (dp_scale == scale)
+		return;
+
+	dp_scale = scale;
+
+	// The inherited font size and line height are scaled here, so they are recomputed even when not set locally.
+	meta->style.DirtyProperty(PropertyId::FontSize);
+	meta->style.DirtyProperty(PropertyId::LineHeight);
+	OnDpRatioChangeRecursive();
+}
+
+float Element::GetDpScale() const
+{
+	return dp_scale;
 }
 
 RenderManager* Element::GetRenderManager() const

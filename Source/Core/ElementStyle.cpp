@@ -715,10 +715,7 @@ static float ComputeLength(NumericValue value, Element* element)
 	Vector2f vp_dimensions(1.0f);
 
 	if (Any(value.unit & Unit::DP_SCALABLE_LENGTH))
-	{
-		if (Context* context = element->GetContext())
-			dp_ratio = context->GetDensityIndependentPixelRatio();
-	}
+		dp_ratio = ElementUtilities::GetDensityIndependentPixelRatio(element);
 
 	switch (value.unit)
 	{
@@ -885,6 +882,21 @@ PropertyIdSet ElementStyle::ComputeValues(Style::ComputedValues& values, const S
 		ExpandVarShorthands(expanded_shorthands, GetPropertySources(), GetDirtyPropertiesRef());
 	}
 
+	// An element with its own dp scale inherits its parent's font size, and a line height given as a length, scaled by it.
+	const float dp_scale = element->GetDpScale();
+	std::optional<Style::ComputedValues> dp_scaled_parent_values;
+	if (parent_values && dp_scale != 1.f)
+	{
+		dp_scaled_parent_values.emplace(element);
+		dp_scaled_parent_values->CopyInherited(*parent_values);
+		dp_scaled_parent_values->font_size(parent_values->font_size() * dp_scale);
+		const Style::LineHeight line_height = parent_values->line_height();
+		if (line_height.inherit_type == Style::LineHeight::Length)
+			dp_scaled_parent_values->line_height(
+				Style::LineHeight(line_height.value * dp_scale, Style::LineHeight::Length, line_height.inherit_value * dp_scale));
+		parent_values = &*dp_scaled_parent_values;
+	}
+
 	// Generally, this is how it works:
 	//   1. Assign default values (clears any removed properties)
 	//   2. Inherit inheritable values from parent
@@ -969,7 +981,8 @@ PropertyIdSet ElementStyle::ComputeValues(Style::ComputedValues& values, const S
 		values.line_height(line_height_before);
 	}
 
-	bool dirty_font_face_handle = false;
+	// A scaled element's font size differs from its parent's, so it cannot share the parent's font face.
+	bool dirty_font_face_handle = (dp_scale != 1.f);
 
 	for (auto it = Iterate(); !it.AtEnd(); ++it)
 	{

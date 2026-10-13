@@ -321,6 +321,13 @@ public:
 	/// Returns the element's context.
 	/// @return The context this element's document exists within.
 	Context* GetContext() const;
+	/// Sets a factor on the context's density-independent pixel ratio for this element and its descendants. Their dp
+	/// lengths, font sizes, borders and decorators resolve at the context's ratio times the product of this and every
+	/// ancestor's factor. Boxes, offsets and mouse coordinates stay in pixels.
+	/// @param[in] scale The factor, 1 by default.
+	void SetDpScale(float scale);
+	/// Returns the factor set by SetDpScale().
+	float GetDpScale() const;
 	/// Returns the element's render manager.
 	/// @return The render manager responsible for this element.
 	RenderManager* GetRenderManager() const;
@@ -777,6 +784,7 @@ private:
 
 	float baseline;
 	float z_index;
+	float dp_scale = 1.f;
 
 	ElementList stacking_context;
 

@@ -824,9 +824,9 @@ bool Context::ProcessMouseWheel(Vector2f wheel_delta, int key_modifier_state)
 	if (!hover->DispatchEvent(EventId::Mousescroll, scroll_parameters))
 		return false;
 
-	const float unit_scroll_length = UNIT_SCROLL_LENGTH * density_independent_pixel_ratio;
-	const Vector2f scroll_length = wheel_delta * unit_scroll_length;
 	Element* target = hover->GetClosestScrollableContainer();
+	const float unit_scroll_length = UNIT_SCROLL_LENGTH * ElementUtilities::GetDensityIndependentPixelRatio(target ? target : hover);
+	const Vector2f scroll_length = wheel_delta * unit_scroll_length;
 
 	if (scroll_controller->GetMode() == ScrollController::Mode::Smoothscroll && scroll_controller->GetTarget() == target)
 		scroll_controller->IncrementSmoothscrollTarget(scroll_length);

@@ -229,7 +229,7 @@ void ElementScroll::UpdateScrollElementProperties(Element* scroll_element)
 
 	Context* context = element->GetContext();
 
-	const float dp_ratio = (context ? context->GetDensityIndependentPixelRatio() : 1.0f);
+	const float dp_ratio = ElementUtilities::GetDensityIndependentPixelRatio(element);
 	const Vector2f vp_dimensions = (context ? Vector2f(context->GetDimensions()) : Vector2f(1.0f));
 	scroll_element->Update(dp_ratio, vp_dimensions);
 }
