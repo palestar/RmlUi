@@ -18,7 +18,7 @@ public:
 	FontFaceHandleDefault();
 	~FontFaceHandleDefault();
 
-	bool Initialize(FontFaceHandleFreetype face, int font_size, bool load_default_glyphs);
+	bool Initialize(FontFaceHandleFreetype face, int font_size, Style::FontWeight weight, bool load_default_glyphs);
 
 	const FontMetrics& GetFontMetrics() const;
 
@@ -120,6 +120,9 @@ private:
 	LayerConfigurationList layer_configurations;
 
 	FontMetrics metrics;
+
+	// The weight of the face, which picks the face of each fallback family that a missing glyph comes from.
+	Style::FontWeight weight = Style::FontWeight::Normal;
 
 	FontFaceHandleFreetype ft_face;
 };

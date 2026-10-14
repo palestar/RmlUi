@@ -77,4 +77,9 @@ void FontEngineInterfaceDefault::ReleaseFontResources()
 	FontProvider::ReleaseFontResources();
 }
 
+void FontEngineInterfaceDefault::PreferFallbackFamily(const String& family)
+{
+	FontProvider::PreferFallbackFamily(StringUtilities::ToLower(family));
+}
+
 } // namespace Rml

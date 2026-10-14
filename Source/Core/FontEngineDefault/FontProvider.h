@@ -46,11 +46,15 @@ public:
 	static bool LoadFontFace(Span<const byte> data, int face_index, const String& font_family, Style::FontStyle style, Style::FontWeight weight,
 		bool fallback_face);
 
-	/// Return the number of fallback font faces.
+	/// Return the number of fallback font families.
 	static int CountFallbackFontFaces();
 
-	/// Return a font face handle with the given index, at the given font size.
-	static FontFaceHandleDefault* GetFallbackFontFace(int index, int font_size);
+	/// Return a handle, at the given font size, to the face of the fallback family with the given index whose weight is nearest the given weight.
+	static FontFaceHandleDefault* GetFallbackFontFace(int index, Style::FontWeight weight, int font_size);
+
+	/// Moves a fallback family to the front, so its faces are tried before those of the other fallback families. The family name must be
+	/// lowercase. Glyphs already taken from another fallback face stay until ReleaseFontResources().
+	static void PreferFallbackFamily(const String& family);
 
 	/// Releases resources owned by sized font faces, including their textures and rendered glyphs.
 	static void ReleaseFontResources();
@@ -67,11 +71,11 @@ private:
 	FontFaceLoadResult AddFace(FontFaceHandleFreetype face, const String& family, Style::FontStyle style, Style::FontWeight weight,
 		bool fallback_face, UniquePtr<byte[]> face_memory);
 
-	using FontFaceList = Vector<FontFace*>;
+	using FontFamilyList = Vector<FontFamily*>;
 	using FontFamilyMap = UnorderedMap<String, UniquePtr<FontFamily>>;
 
 	FontFamilyMap font_families;
-	FontFaceList fallback_font_faces;
+	FontFamilyList fallback_font_families;
 
 	static const String debugger_font_family_name;
 };

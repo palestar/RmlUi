@@ -43,7 +43,7 @@ FontFaceHandleDefault* FontFace::GetHandle(int size, bool load_default_glyphs)
 
 	// Construct and initialise the new handle.
 	auto handle = MakeUnique<FontFaceHandleDefault>();
-	if (!handle->Initialize(face, size, load_default_glyphs))
+	if (!handle->Initialize(face, size, weight, load_default_glyphs))
 	{
 		handles[size] = nullptr;
 		return nullptr;

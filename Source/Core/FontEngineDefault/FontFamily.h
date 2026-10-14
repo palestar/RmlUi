@@ -22,8 +22,9 @@ public:
 	/// @param[in] style The style of the desired handle.
 	/// @param[in] weight The weight of the desired handle.
 	/// @param[in] size The size of the desired handle, in points.
+	/// @param[in] load_default_glyphs True to load the default set of glyphs (ASCII range) when the handle is new.
 	/// @return A valid handle if a matching (or closely matching) font face was found, nullptr otherwise.
-	FontFaceHandleDefault* GetFaceHandle(Style::FontStyle style, Style::FontWeight weight, int size);
+	FontFaceHandleDefault* GetFaceHandle(Style::FontStyle style, Style::FontWeight weight, int size, bool load_default_glyphs = true);
 
 	/// Adds a new face to the family.
 	/// @param[in] ft_face The previously loaded FreeType face.

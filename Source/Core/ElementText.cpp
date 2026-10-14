@@ -14,6 +14,8 @@
 #include "ElementDefinition.h"
 #include "ElementStyle.h"
 #include "TransformState.h"
+#include <algorithm>
+#include <iterator>
 #include <limits>
 
 namespace Rml {
@@ -21,6 +23,82 @@ namespace Rml {
 static bool BuildToken(String& token, const char*& token_begin, const char* string_end, bool first_token, bool collapse_white_space,
 	bool break_at_endline, Style::TextTransform text_transformation, bool decode_escape_characters);
 static bool LastToken(const char* token_begin, const char* string_end, bool collapse_white_space, bool break_at_endline);
+
+static constexpr Character ZeroWidthSpace = Character(0x200B);
+
+// Han, kana, CJK punctuation and full-width forms, between any two of which a line may break. Not Hangul: Korean breaks
+// at spaces, as Latin does.
+static bool IsCJK(Character character)
+{
+	const char32_t c = char32_t(character);
+	return (c >= 0x2E80 && c <= 0x312F) || (c >= 0x3190 && c <= 0x33FF) || (c >= 0x3400 && c <= 0x4DBF) || (c >= 0x4E00 && c <= 0x9FFF) ||
+		(c >= 0xF900 && c <= 0xFAFF) || (c >= 0xFE30 && c <= 0xFE4F) || (c >= 0xFF00 && c <= 0xFFEF) || (c >= 0x20000 && c <= 0x3FFFF);
+}
+
+// Kinsoku: no line starts with a closing mark, and none ends with an opening one.
+static bool IsClosingMark(Character character)
+{
+	static const char32_t closing[] = {0x3001, 0x3002, 0x3005, 0x3009, 0x300B, 0x300D, 0x300F, 0x3011, 0x3015, 0x3017, 0x3019, 0x301B, 0x301E,
+		0x301F, 0x30FB, 0xFF01, 0xFF09, 0xFF0C, 0xFF0E, 0xFF1A, 0xFF1B, 0xFF1F, 0xFF3D, 0xFF5D, 0xFF60, 0xFF61, 0xFF63, 0xFF64, 0xFF65};
+	return std::find(std::begin(closing), std::end(closing), char32_t(character)) != std::end(closing);
+}
+static bool IsOpeningMark(Character character)
+{
+	static const char32_t opening[] = {0x3008, 0x300A, 0x300C, 0x300E, 0x3010, 0x3014, 0x3016, 0x3018, 0x301A, 0x301D, 0xFF08, 0xFF3B, 0xFF5B,
+		0xFF5F, 0xFF62};
+	return std::find(std::begin(opening), std::end(opening), char32_t(character)) != std::end(opening);
+}
+
+static bool IsThai(Character character)
+{
+	return char32_t(character) >= 0x0E00 && char32_t(character) <= 0x0E7F;
+}
+static bool ContainsThai(const String& text)
+{
+	for (StringIteratorU8 it(text); it; ++it)
+		if (IsThai(*it))
+			return true;
+	return false;
+}
+// A Thai vowel or tone mark drawn above or below the consonant before it, which a line must not break from.
+static bool IsThaiMark(Character character)
+{
+	const char32_t c = char32_t(character);
+	return c == 0x0E31 || (c >= 0x0E34 && c <= 0x0E3A) || (c >= 0x0E47 && c <= 0x0E4E);
+}
+
+// A Latin-1 or Latin Extended-A letter in capitals or small letters, as text-transform shows it. Sharp s (U+00DF) in capitals is SS.
+static String TransformLatinCase(Character character, Style::TextTransform text_transformation)
+{
+	char32_t c = char32_t(character);
+	if (text_transformation == Style::TextTransform::Uppercase)
+	{
+		if (c == 0xDF)
+			return "SS";
+		if (c >= 0xE0 && c <= 0xFE && c != 0xF7)
+			c -= 0x20;
+		else if (c == 0xFF)
+			c = 0x178;
+		else if (c == 0x131)
+			c = 'I';
+		else if ((c >= 0x100 && c <= 0x137 && c != 0x130 && (c & 1)) || (c >= 0x14A && c <= 0x177 && (c & 1)) ||
+			(c >= 0x139 && c <= 0x148 && !(c & 1)) || (c >= 0x179 && c <= 0x17E && !(c & 1)))
+			c -= 1;
+	}
+	else
+	{
+		if (c >= 0xC0 && c <= 0xDE && c != 0xD7)
+			c += 0x20;
+		else if (c == 0x178)
+			c = 0xFF;
+		else if (c == 0x130)
+			c = 'i';
+		else if ((c >= 0x100 && c <= 0x137 && c != 0x130 && !(c & 1)) || (c >= 0x14A && c <= 0x177 && !(c & 1)) ||
+			(c >= 0x139 && c <= 0x148 && (c & 1)) || (c >= 0x179 && c <= 0x17E && (c & 1)))
+			c += 1;
+	}
+	return StringUtilities::ToUTF8(Character(c));
+}
 
 static int RoundDownToIntegerClamped(float value)
 {
@@ -275,7 +353,9 @@ bool ElementText::GenerateLine(String& line, int& line_length, float& line_width
 
 			if (token_width > max_token_width)
 			{
-				if (word_break == WordBreak::BreakAll || (word_break == WordBreak::BreakWord && line.empty()))
+				// Thai is written without spaces between words, so a Thai word too long for a line of its own breaks where it must.
+				const bool break_word = word_break == WordBreak::BreakWord || ContainsThai(token);
+				if (word_break == WordBreak::BreakAll || (break_word && line.empty()))
 				{
 					// Try to break up the word
 					max_token_width = RoundDownToIntegerClamped(maximum_line_width - line_width);
@@ -286,6 +366,8 @@ bool ElementText::GenerateLine(String& line, int& line_length, float& line_width
 					while (true)
 					{
 						partial_string_end = StringUtilities::SeekBackwardUTF8(partial_string_end - 1, token_begin);
+						while (partial_string_end != token_begin && IsThaiMark(StringUtilities::ToCharacter(partial_string_end, string_end)))
+							partial_string_end = StringUtilities::SeekBackwardUTF8(partial_string_end - 1, token_begin);
 
 						bool force_loop_break_at_end = false;
 						if (partial_string_end == token_begin)
@@ -577,6 +659,8 @@ static bool BuildToken(String& token, const char*& token_begin, const char* stri
 
 	// Check what the first character of the token is; all we need to know is if it is white-space or not.
 	bool parsing_white_space = StringUtilities::IsWhitespace(*token_begin);
+	// The last character other than white-space put in the token.
+	Character previous = Character::Null;
 
 	// Loop through the string from the token's beginning until we find an end to the token. This can occur in various
 	// places, depending on the white-space processing;
@@ -678,18 +762,55 @@ static bool BuildToken(String& token, const char*& token_begin, const char* stri
 		}
 		else
 		{
-			if (text_transformation == Style::TextTransform::Uppercase)
+			// A character past ASCII is taken whole.
+			Character codepoint = Character((unsigned char)character);
+			size_t length = 1;
+			if ((unsigned char)character >= 0x80)
 			{
-				if (character >= 'a' && character <= 'z')
-					character += ('A' - 'a');
-			}
-			else if (text_transformation == Style::TextTransform::Lowercase)
-			{
-				if (character >= 'A' && character <= 'Z')
-					character -= ('A' - 'a');
+				codepoint = StringUtilities::ToCharacter(token_begin, string_end);
+				length = (codepoint == Character::Null ? 1 : StringUtilities::BytesUTF8(codepoint));
 			}
 
-			token += character;
+			// Break opportunities end the token: a zero-width space, which is not drawn, and the place between two CJK
+			// characters that kinsoku allows.
+			if (codepoint == ZeroWidthSpace)
+			{
+				token_begin += length;
+				if (previous != Character::Null)
+					return false;
+				continue;
+			}
+			if (IsCJK(previous) && IsCJK(codepoint) && !IsOpeningMark(previous) && !IsClosingMark(codepoint))
+				return false;
+
+			if (length > 1)
+			{
+				const bool change_case =
+					(text_transformation == Style::TextTransform::Uppercase || text_transformation == Style::TextTransform::Lowercase);
+				if (change_case && codepoint != Character::Null)
+					token += TransformLatinCase(codepoint, text_transformation);
+				else
+					token.append(token_begin, length);
+			}
+			else
+			{
+				if (text_transformation == Style::TextTransform::Uppercase)
+				{
+					if (character >= 'a' && character <= 'z')
+						character += ('A' - 'a');
+				}
+				else if (text_transformation == Style::TextTransform::Lowercase)
+				{
+					if (character >= 'A' && character <= 'Z')
+						character -= ('A' - 'a');
+				}
+
+				token += character;
+			}
+
+			previous = codepoint;
+			token_begin += length;
+			continue;
 		}
 
 		++token_begin;

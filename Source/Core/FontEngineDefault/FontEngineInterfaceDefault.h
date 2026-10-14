@@ -47,6 +47,9 @@ public:
 
 	/// Releases resources owned by sized font faces, including their textures and rendered glyphs.
 	void ReleaseFontResources() override;
+
+	/// Tries the faces of this fallback family before those of the other fallback families, for glyphs not yet taken from one.
+	void PreferFallbackFamily(const String& family);
 };
 
 } // namespace Rml

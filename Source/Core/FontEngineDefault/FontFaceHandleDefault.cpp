@@ -27,9 +27,10 @@ FontFaceHandleDefault::~FontFaceHandleDefault()
 	layers.clear();
 }
 
-bool FontFaceHandleDefault::Initialize(FontFaceHandleFreetype face, int font_size, bool load_default_glyphs)
+bool FontFaceHandleDefault::Initialize(FontFaceHandleFreetype face, int font_size, Style::FontWeight _weight, bool load_default_glyphs)
 {
 	ft_face = face;
+	weight = _weight;
 
 	RMLUI_ASSERTMSG(layer_configurations.empty(), "Initialize must only be called once.");
 
@@ -367,7 +368,7 @@ const FontGlyph* FontFaceHandleDefault::GetOrAppendGlyph(Character& character, b
 			const int num_fallback_faces = FontProvider::CountFallbackFontFaces();
 			for (int i = 0; i < num_fallback_faces; i++)
 			{
-				FontFaceHandleDefault* fallback_face = FontProvider::GetFallbackFontFace(i, metrics.size);
+				FontFaceHandleDefault* fallback_face = FontProvider::GetFallbackFontFace(i, weight, metrics.size);
 				if (!fallback_face || fallback_face == this)
 					continue;
 

@@ -62,17 +62,30 @@ FontFaceHandleDefault* FontProvider::GetFontFaceHandle(const String& family, Sty
 
 int FontProvider::CountFallbackFontFaces()
 {
-	return (int)Get().fallback_font_faces.size();
+	return (int)Get().fallback_font_families.size();
 }
 
-FontFaceHandleDefault* FontProvider::GetFallbackFontFace(int index, int font_size)
+FontFaceHandleDefault* FontProvider::GetFallbackFontFace(int index, Style::FontWeight weight, int font_size)
 {
-	auto& faces = FontProvider::Get().fallback_font_faces;
+	auto& families = FontProvider::Get().fallback_font_families;
 
-	if (index >= 0 && index < (int)faces.size())
-		return faces[index]->GetHandle(font_size, false);
+	if (index >= 0 && index < (int)families.size())
+		return families[index]->GetFaceHandle(Style::FontStyle::Normal, weight, font_size, false);
 
 	return nullptr;
+}
+
+void FontProvider::PreferFallbackFamily(const String& family)
+{
+	FontProvider& provider = Get();
+	auto it_family = provider.font_families.find(family);
+	if (it_family == provider.font_families.end())
+		return;
+
+	auto& families = provider.fallback_font_families;
+	auto it_fallback = std::find(families.begin(), families.end(), it_family->second.get());
+	if (it_fallback != families.end())
+		std::rotate(families.begin(), it_fallback, it_fallback + 1);
 }
 
 void FontProvider::ReleaseFontResources()
@@ -239,10 +252,10 @@ auto FontProvider::AddFace(FontFaceHandleFreetype face, const String& family, St
 
 	if (face_ptr && fallback_face)
 	{
-		auto it_fallback_face = std::find(fallback_font_faces.begin(), fallback_font_faces.end(), face_ptr);
-		if (it_fallback_face == fallback_font_faces.end())
+		auto it_fallback_family = std::find(fallback_font_families.begin(), fallback_font_families.end(), font_family);
+		if (it_fallback_family == fallback_font_families.end())
 		{
-			fallback_font_faces.push_back(face_ptr);
+			fallback_font_families.push_back(font_family);
 		}
 	}
 

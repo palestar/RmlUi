@@ -16,7 +16,7 @@ FontFamily::~FontFamily()
 		entry.face.reset();
 }
 
-FontFaceHandleDefault* FontFamily::GetFaceHandle(Style::FontStyle style, Style::FontWeight weight, int size)
+FontFaceHandleDefault* FontFamily::GetFaceHandle(Style::FontStyle style, Style::FontWeight weight, int size, bool load_default_glyphs)
 {
 	int best_dist = INT_MAX;
 	FontFace* matching_face = nullptr;
@@ -45,7 +45,7 @@ FontFaceHandleDefault* FontFamily::GetFaceHandle(Style::FontStyle style, Style::
 	if (!matching_face)
 		return nullptr;
 
-	return matching_face->GetHandle(size, true);
+	return matching_face->GetHandle(size, load_default_glyphs);
 }
 
 auto FontFamily::AddFace(FontFaceHandleFreetype ft_face, Style::FontStyle style, Style::FontWeight weight, UniquePtr<byte[]> face_memory)
