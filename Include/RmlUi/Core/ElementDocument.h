@@ -151,8 +151,11 @@ private:
 	/// Updates all sizes defined by the 'vw' and the 'vh' units.
 	void DirtyVwAndVhProperties();
 
-	/// Updates the layout if necessary.
+	/// Updates the layout if necessary: the whole document, or only the layout boundaries whose content changed.
 	void UpdateLayout();
+	/// Lays out again the nearest layout boundary at or above start, or the whole document when there is none. Ignored
+	/// while the document is being laid out, and for elements outside the document.
+	void DirtyLayoutAt(Element* start);
 
 	/// Updates the position of the document based on the style properties.
 	void UpdatePosition();
@@ -171,8 +174,13 @@ private:
 
 	bool layout_dirty;
 	bool position_dirty;
+	bool formatting_layout = false;
+
+	// Layout boundaries with content changed since the last layout, laid out on their own unless the whole document is.
+	Vector<ObserverPtr<Element>> dirty_layout_boundaries;
 
 	friend class Rml::Context;
+	friend class Rml::Element;
 	friend class Rml::Factory;
 };
 

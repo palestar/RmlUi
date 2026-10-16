@@ -49,7 +49,13 @@ void ContainerBox::ClosePositionedElements()
 	// updated to reflect changes to the size of this block box. Update relative offsets before handling absolute
 	// elements, as this may affect the resolved static position of the absolute elements.
 	for (Element* child : relative_elements)
+	{
+		// The relative offset moves the element and everything positioned from it.
+		const Vector2f old_position = child->relative_offset_position;
 		child->UpdateOffset();
+		if (child->relative_offset_position != old_position)
+			child->DirtyAbsoluteOffsetRecursive();
+	}
 
 	relative_elements.clear();
 

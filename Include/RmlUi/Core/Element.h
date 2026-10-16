@@ -638,9 +638,10 @@ protected:
 	/// @param[in] child The element that has been removed. This may be this element.
 	virtual void OnChildRemove(Element* child);
 
-	/// Forces a re-layout of this element, and any other elements required.
+	/// Lays out this element again with everything its box can affect: the nearest layout boundary above it, or its
+	/// whole document when there is none (see LayoutEngine::FormatBoundary).
 	virtual void DirtyLayout();
-	/// Returns true if the element has been marked as needing a re-layout.
+	/// Returns true if the element's document has layout to do, of the whole document or of a layout boundary in it.
 	virtual bool IsLayoutDirty();
 
 	/// Returns the RML of this element and all children.
@@ -665,6 +666,10 @@ protected:
 
 private:
 	void SetParent(Element* parent);
+
+	/// Lays out again what a change to this element's children can affect: this element alone when it is a layout
+	/// boundary, otherwise as DirtyLayout().
+	void DirtyChildLayout();
 
 	void SetDataModel(DataModel* new_data_model);
 
@@ -785,6 +790,14 @@ private:
 	float baseline;
 	float z_index;
 	float dp_scale = 1.f;
+
+	// How the element was last formatted as an independent formatting context, set by each layout of it
+	// (LayoutEngine::RecordIndependentFormat). A layout boundary is formatted on its own when only its content changed.
+	bool layout_boundary = false;
+	bool layout_boundary_overflow_propagates = false; // its visible overflow reaches its parent's scrollable area
+	bool layout_boundary_pending = false;             // waiting in its document's queue to be formatted on its own
+	Vector2f layout_boundary_containing_block;
+	Vector2f layout_boundary_visible_overflow;
 
 	ElementList stacking_context;
 

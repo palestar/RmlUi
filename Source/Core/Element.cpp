@@ -1386,7 +1386,7 @@ Element* Element::AppendChild(ElementPtr child, bool dom_element)
 	DirtyDefinition(DirtyNodes::Self);
 
 	if (dom_element)
-		DirtyLayout();
+		DirtyChildLayout();
 
 	return child_ptr;
 }
@@ -1420,7 +1420,7 @@ Element* Element::InsertBefore(ElementPtr child, Element* adjacent_element)
 		if ((int)child_index >= GetNumChildren())
 			num_non_dom_children++;
 		else
-			DirtyLayout();
+			DirtyChildLayout();
 
 		children.insert(children.begin() + child_index, std::move(child));
 		child_ptr->SetParent(this);
@@ -1513,7 +1513,7 @@ ElementPtr Element::RemoveChild(Element* child)
 
 			detached_child->SetParent(nullptr);
 
-			DirtyLayout();
+			DirtyChildLayout();
 			DirtyStackingContext();
 			DirtyDefinition(DirtyNodes::Self);
 
@@ -1836,8 +1836,8 @@ void Element::OnPropertyChange(const PropertyIdSet& changed_properties)
 		changed_properties.Contains(PropertyId::Left)      //
 	);
 
-	// See if the document layout needs to be updated.
-	if (!IsLayoutDirty())
+	// See if the layout needs to be updated. Pending layout of a layout boundary does not cover this element, so the
+	// check runs whatever layout is already pending.
 	{
 		// Force a relayout if any of the changed properties require it.
 		const PropertyIdSet changed_properties_forcing_layout =
@@ -2004,8 +2004,14 @@ void Element::OnChildRemove(Element* /*child*/) {}
 
 void Element::DirtyLayout()
 {
-	if (Element* document = GetOwnerDocument())
-		document->DirtyLayout();
+	if (ElementDocument* document = GetOwnerDocument())
+		document->DirtyLayoutAt(parent);
+}
+
+void Element::DirtyChildLayout()
+{
+	if (ElementDocument* document = GetOwnerDocument())
+		document->DirtyLayoutAt(this);
 }
 
 bool Element::IsLayoutDirty()

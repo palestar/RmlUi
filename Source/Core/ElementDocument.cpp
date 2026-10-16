@@ -491,6 +491,35 @@ void ElementDocument::UpdateLayout()
 		// Ignore dirtied layout during document formatting. Layouting must not require re-iteration.
 		// In particular, scrollbars being enabled may set the dirty flag, but this case is already handled within the layout engine.
 		layout_dirty = false;
+		for (const ObserverPtr<Element>& boundary : dirty_layout_boundaries)
+		{
+			if (Element* element = boundary.get())
+				LayoutEngine::UnqueueBoundary(element);
+		}
+		dirty_layout_boundaries.clear();
+	}
+	else if (!dirty_layout_boundaries.empty())
+	{
+		RMLUI_ZoneScopedN("UpdateLayoutBoundaries");
+
+		Vector<Element*> boundaries;
+		for (const ObserverPtr<Element>& boundary : dirty_layout_boundaries)
+		{
+			if (Element* element = boundary.get())
+				boundaries.push_back(element);
+		}
+		dirty_layout_boundaries.clear();
+
+		// As for the whole document, layout dirtied while the boundaries are formatted is ignored.
+		formatting_layout = true;
+		const bool contained = LayoutEngine::FormatBoundaries(this, boundaries);
+		formatting_layout = false;
+
+		if (!contained)
+		{
+			layout_dirty = true;
+			UpdateLayout();
+		}
 	}
 }
 
@@ -545,9 +574,30 @@ void ElementDocument::DirtyLayout()
 	layout_dirty = true;
 }
 
+void ElementDocument::DirtyLayoutAt(Element* start)
+{
+	if (layout_dirty || formatting_layout)
+		return;
+
+	for (Element* element = start; element; element = element->GetParentNode())
+	{
+		if (element == this)
+		{
+			layout_dirty = true;
+			return;
+		}
+		if (LayoutEngine::IsLayoutBoundary(element))
+		{
+			if (LayoutEngine::QueueBoundary(element))
+				dirty_layout_boundaries.push_back(element->GetObserverPtr());
+			return;
+		}
+	}
+}
+
 bool ElementDocument::IsLayoutDirty()
 {
-	return layout_dirty;
+	return layout_dirty || !dirty_layout_boundaries.empty();
 }
 
 void ElementDocument::DirtyVwAndVhProperties()
