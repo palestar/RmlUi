@@ -653,6 +653,11 @@ bool ElementAnimation::InternalAddKey(float time, const Property& in_property, E
 
 	if (property.unit == Unit::TRANSFORM)
 	{
+		// Preparing a key resolves its lengths and percentages to px for this element at the present dp ratio, in place.
+		// The property shares its Transform with the style sheet rule or keyframe it came from, so the key takes a copy
+		// of its own first and the rule keeps its units.
+		if (const TransformPtr& shared = property.value.GetReference<TransformPtr>())
+			property.value = MakeShared<Transform>(*shared);
 		result = PrepareTransforms(keys, element, (int)keys.size() - 1);
 	}
 	else if (property.unit == Unit::DECORATOR)

@@ -3091,6 +3091,10 @@ void Element::OnDpRatioChangeRecursive()
 {
 	meta->effects.DirtyEffects();
 	GetStyle()->DirtyPropertiesWithUnits(Unit::DP_SCALABLE_LENGTH);
+	// A transform's lengths resolve as its matrix is built, and the transform property itself is not a length, so the
+	// matrix is built again at the new ratio even where the box and offset come out the same.
+	if (transform_state)
+		DirtyTransformState(true, true);
 
 	OnDpRatioChange();
 
